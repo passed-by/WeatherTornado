@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>天气查询</title>
+    <script type="text/javascript" src="https://libs.baidu.com/jquery/1.11.3/jquery.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            font-size: 14px;
+        }
+
+        h1 {
+            font-size: 38px;
+            margin-bottom: 10px;
+            margin-top: 4px;
+        }
+
+        #all {
+            text-align: center;
+            width: 100%;
+            background-color: white;
+            /*height: 800px;*/
+            /*border: 1px solid black;*/
+        }
+
+        li {
+            list-style: none;
+            height: 40px;
+        }
+
+        .city_title {
+            font-size: 35px;
+            line-height: 40px;
+            margin-right: 50px;
+        }
+
+        #weatherList {
+            margin: 0 auto;
+            width: 500px;
+            height: 260px;
+            border: 1px solid gray;
+            border-radius: 4px;
+            mso-border-shadow: yes;
+        }
+
+        input {
+            width: 300px;
+            height: 28px;
+        }
+
+        button {
+            width: 60px;
+            height: 32px;
+        }
+
+        .point {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 5px;
+            border: 1px solid gainsboro;
+            font-size: 30px;
+            top: 60px;
+            display: none;
+        }
+
+        .point label {
+            font-size: 30px;
+            margin: -6px -4px 0px 0px;
+        }
+
+        .point_left {
+            float: left;
+        }
+
+        .point_right {
+            float: right;
+        }
+    </style>
+</head>
+<body>
+<div id="all">
+    <h1>天气查询</h1>
+
+    <input type="text" name="city" placeholder="请输入查询城市名称">&nbsp;
+    <button>确定</button>
+
+    <br>
+    <br>
+    <div id="weatherList" style="z-index: 2">
+        <br>
+        <br>
+        <div class="point point_right" onclick="rightpoint()">
+            <label>&gt;</label>
+        </div>
+        <div class="point point_left" onclick="leftpoint()">
+            <label>&lt;</label>
+        </div>
+        <p></p>
+        <br>
+        <ul id="day">
+
+        </ul>
+        <ul id="night">
+
+        </ul>
+    </div>
+</div>
+<script>
+    //查询城市的近十天天气信息
+    var days = [];
+    var day_num = 0;
+
+    //点击提交后,使用ajax与后台数据交互,succss参数是后天返回的结果
+    $("button").click(function () {
+
+            //对输入的内容进行判断
+            let city_content = document.getElementsByName("city")[0].value;
+            var re = "^[/u4e00-/u9fa5]+$";     //只允许输入中文
+            if (city_content === "") {
+                alert("请填写查询城市!")
+            } else if (re.match(city_content)) {
+                alert("城市名字有误!")
+            } else {
+                //使用ajax提交数据到后台,并接收返回的数据
+                $.ajax(
+                    {
+                        type: "get",
+                        dataType: "json",
+                        url: "/weatherinfo/",
+                        data: {"city": $("input")[0].value},    //提交到后台的数据
+                        success: function (data) {
+                            //data是后台返回数据
+                            if (data['ret_code'] == -1) {      //查找不到时执行
+                                alert("城市查看不到!")
+                            } else {
+                                days = data['dayList'];
+                                change(0);
+                                document.getElementsByName("city")[0].value = "";
+                                // console.log(data);
+                            }
+                        }
+                    }
+                );
+            }
+        }
+    );
+
+    //切换日期的天气
+    function change(num) {
+        //白天
+        var day_air = days[num]['day_air_temperature'];     //气温
+        var day_weather = days[num]['day_weather'];         //天气
+        var day_wind_power = days[num]['day_wind_power'];    //风力
+        var day_wind_direction = days[num]['day_wind_direction'];    //风向
+
+        //夜晚
+        var night_air = days[num]['night_air_temperature'];    //气温
+        var night_weather = days[num]['night_weather'];       //天气
+        var night_wind_power = days[num]['night_wind_power'];   //风力
+        var night_wind_direction = days[num]['night_wind_direction'];    //风向
+
+        //创建对象
+        let day = $("#day");
+        let label = $("label");
+        let night = $("#night");
+        let p = $("p");
+        let list = $("#weatherList");
+
+        //清空节点内容
+        p.empty();
+        day.empty();
+        night.empty();   //添加节点时,需要先清楚指定节点中的内容
+
+        //添加内容
+        var date = days[num]['daytime'];
+        var date_text = "&nbsp;" + date.slice(0, 4) + "&nbsp;年&nbsp;" + parseInt(date.slice(4, 6)) + "&nbsp;月<label style='color: red'>&nbsp;" + parseInt(date.slice(6, 8)) + "&nbsp;</label>日";
+        var text = night_air + "~" + day_air;
+        var text_line2 = "<li><b>白天:</b>&nbsp;&nbsp;&nbsp;" + day_weather + "&nbsp;&nbsp;&nbsp;风向:&nbsp;" + day_wind_direction + "&nbsp;&nbsp;&nbsp;风力等级:&nbsp;" + day_wind_power + "</li>";
+        var text_line3 = "<li><b>夜晚:</b>&nbsp;&nbsp;&nbsp;" + night_weather + "&nbsp;&nbsp;&nbsp;风向:&nbsp;" + night_wind_direction + "&nbsp;&nbsp;&nbsp;风力等级:&nbsp;" + night_wind_power + "</li>";
+
+        //添加节点
+        p.append("<label class='city_title'>" + days[num]['area'] + "</label>");
+        p.append("<label>日期:&nbsp;" + date_text + "</label>");
+        day.append("<li>气温:&nbsp;" + text + "&#8451;" + "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;温差:&nbsp;" + (day_air - night_air) + "&#8451;</li>");
+        day.append(text_line2);
+        day.append(text_line3);
+    }
+
+    //右侧按钮的点击事件
+    function leftpoint() {
+        if ($("li").length > 0) {
+            if (day_num == 0) {
+                alert("已经是最新天气信息!")
+            } else {
+                console.log(day_num);
+                day_num -= 1;
+                change(day_num)
+            }
+        }
+    };
+
+    //左侧按钮的点击事件
+    function rightpoint() {
+        if ($("li").length > 0) {
+            if (day_num + 1 == days.length) {
+                alert("暂无可查询天气信息!")
+            } else {
+                console.log(day_num);
+                day_num += 1;
+                change(day_num)
+            }
+        }
+    };
+
+    //按钮的效果,是否显示按钮
+    $("#weatherList").hover(function () {
+        if ($('li').length > 0) {
+            $(".point").show("normal");
+        }
+    }, function () {
+        if ($('li').length > 0) {
+            $(".point").hide("normal");
+        }
+    });
+
+</script>
+</body>
+</html>
